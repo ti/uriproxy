@@ -1,8 +1,8 @@
 # URI Proxy
 
+Reverse Proxy and Http Client for distributed uri like http://host1,host2,host3/path
 
-
-## Proxy
+## Reverse Proxy
 ```go
     var proxy = urlproxy.DefaultProxy
 	proxy.AddUpstream("/", "http://user:pass@dev.lnx.cm:2001,dev.lnx.cm:2002")
