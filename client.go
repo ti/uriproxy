@@ -92,3 +92,16 @@ func (c *Client) Proxy(w http.ResponseWriter, r *http.Request, respRespUpdateFn 
 	}
 	return ServeUpstream(upstream, w,r,respRespUpdateFn)
 }
+
+// ServeHTTP satisfies the httpserver.Handler interface.
+func (c *Client) ServeHTTP(w http.ResponseWriter, r *http.Request,respRespUpdateFn RespUpdateFn) {
+	code, err := c.Proxy(w,r,respRespUpdateFn)
+	if err != nil {
+		if code >= 400 {
+			w.WriteHeader(code)
+		} else {
+			w.WriteHeader(502)
+		}
+		w.Write([]byte(err.Error()))
+	}
+}

@@ -15,16 +15,16 @@ func TestMultiUriClient()  {
 		start := time.Now().Nanosecond() / 10000
 		resp, err := uriproxy.DefaultClient.Request(http.MethodGet,"http://dev.lnx.cm:2001,dev.lnx.cm:12002,dev.lnx.cm:12003/you,dev.lnx.cm:2003/you", nil, nil )
 		if err != nil {
-			log.Println("错误", err)
+			log.Println("ERROR", err)
 			AddRet(result, 0)
-			log.Println("进行第",i, "次", "错误结果", 0, "耗时", (time.Now().Nanosecond() / 10000) - start)
+			log.Println("runing",i, "ERROR", 0, "time", (time.Now().Nanosecond() / 10000) - start)
 
 			time.Sleep(time.Second)
 
 		} else {
 			respBody, err := ioutil.ReadAll(resp.Body)
 			if err  != nil {
-				log.Println("错误", err)
+				log.Println("ERROR", err)
 				AddRet(result, 1)
 
 			} else {
@@ -33,12 +33,12 @@ func TestMultiUriClient()  {
 				if err := json.Unmarshal(respBody, &ret); err == nil {
 					AddRet(result, ret.Host)
 				} else {
-					log.Println("错误",err)
+					log.Println("ERROR",err)
 					AddRet(result, 3)
 				}
 			}
 			AddRet(result, resp.StatusCode)
-			log.Println("进行第",i, "次", "结果", resp.StatusCode, "耗时", (time.Now().Nanosecond() / 10000) - start)
+			log.Println("runing",i, "time", resp.StatusCode, "耗时", (time.Now().Nanosecond() / 10000) - start)
 		}
 	}
 	log.Println("请求结果", result)
@@ -55,7 +55,7 @@ func TestMultiUriProxy()  {
 		time.Sleep(5 * time.Second)
 		TestHttp()
 	}()
-	log.Println("进入：", 9090)
+	log.Println("Listening：", 9090)
 	err := http.ListenAndServe(":9090",http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		respfunc := func(res *http.Response) bool {
 			body, err := ioutil.ReadAll(res.Body)
@@ -78,7 +78,7 @@ func TestMultiUriProxy()  {
 }
 
 func TestSingleUriProxy()  {
-	log.Println("进入：", 9080)
+	log.Println("Listening：", 9080)
 	err := http.ListenAndServe(":9080",http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		r.URL.Host = "dev.lnx.cm:2001,dev.lnx.cm:12004,dev.lnx.cm:12001,dev.lnx.cm:12000"
 
