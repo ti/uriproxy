@@ -194,6 +194,71 @@ var requestReplacer = strings.NewReplacer(
 	"\n", "\\n",
 )
 
+type Query struct {
+	indexs map[string]int
+	KVS  []struct {
+		K string
+		V string
+	}
+}
+
+func (v Query) Get(key string) string {
+	index := v.indexs[key]
+	if index < 1 {
+		return ""
+	}
+	return v.KVS[index-1].V
+}
+
+func parseQuery(query string) (ret Query, err error) {
+	ret = Query{
+		indexs:make(map[string]int),
+		KVS: []struct {
+			K string
+			V string
+		}{},
+	}
+	var index int
+	for query != "" {
+		key := query
+		if i := strings.IndexAny(key, "&;"); i >= 0 {
+			key, query = key[:i], key[i+1:]
+		} else {
+			query = ""
+		}
+		if key == "" {
+			continue
+		}
+		value := ""
+		if i := strings.Index(key, "="); i >= 0 {
+			key, value = key[:i], key[i+1:]
+		}
+		key, err1 := url.QueryUnescape(key)
+		if err1 != nil {
+			if err == nil {
+				err = err1
+			}
+			continue
+		}
+		if ret.indexs[key] > 0 {
+			continue
+		}
+		value, err1 = url.QueryUnescape(value)
+		if err1 != nil {
+			if err == nil {
+				err = err1
+			}
+			continue
+		}
+		ret.KVS = append(ret.KVS, struct {
+			K string
+			V string
+		}{K:key , V:value })
+		index ++
+		ret.indexs[key] = index
+	}
+	return ret, err
+}
 //isPathInBasePath check if path is in the child of base path
 //exp: /first/your/path is in /first/
 func IsPathMatchBasePath(src, base string) bool {

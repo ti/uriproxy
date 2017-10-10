@@ -323,7 +323,7 @@ func newStaticUpstreamByURL(uri *url.URL) (Upstream, error) {
 		MaxConns:          0,
 		KeepAlive:         http.DefaultMaxIdleConnsPerHost,
 	}
-	query := uri.Query()
+	query, _ := parseQuery(uri.RawQuery)
 	if err := upstream.parseFromQuery(query); err != nil {
 		return nil, err
 	}
@@ -557,53 +557,56 @@ func (u *staticUpstream) Stop() error {
 	u.wg.Wait()
 	return nil
 }
+
+
+
+
 //parseFromQuery parse Upstream params from url
-func (u *staticUpstream) parseFromQuery(q url.Values) error {
-	for k, _ := range q {
-		index := strings.Index(k, "[")
-		v := q.Get(k)
+func (u *staticUpstream) parseFromQuery(q Query) error {
+	for _, value := range q.KVS {
+		index := strings.Index(value.K, "[")
 		if index > 0 {
-			l := len(k)
+			l := len(value.K)
 			if l - index > 2 {
-				childKey := k[index+1:l-1]
-				switch k[:index] {
+				childKey := value.K[index+1:l-1]
+				switch value.K[:index] {
 				case "header_upstream":
-					if v == "" {
+					if value.V == "" {
 						if !strings.HasPrefix(childKey, "-") {
 							return errors.New("header_upstream must has prefix '-'")
 						}
 					}
-					u.upstreamHeaders.Add(childKey, v)
+					u.upstreamHeaders.Add(childKey, value.V)
 				case "header_downstream":
-					if v == "" {
+					if value.V == "" {
 						if !strings.HasPrefix(childKey, "-") {
 							return errors.New("header_upstream must has prefix '-'")
 						}
 					}
-					u.downstreamHeaders.Add(childKey, v)
+					u.downstreamHeaders.Add(childKey, value.V)
 				}
 			} else {
 				return errors.New("query key bad format for [")
 			}
 			continue
 		}
-		switch k {
+		switch value.K {
 		case "host":
 			//Do Nothing
 		case "policy":
-			policyCreateFunc, ok := supportedPolicies[v]
+			policyCreateFunc, ok := supportedPolicies[value.V]
 			if !ok {
 				return errors.New("policy must be in (random, least_conn, round_robin, ip_hash, first, uri_hash, header)")
 			}
-			u.Policy = policyCreateFunc(v)
+			u.Policy = policyCreateFunc(value.V)
 		case "fail_timeout":
-			dur, err := time.ParseDuration(v)
+			dur, err := time.ParseDuration(value.V)
 			if err != nil {
 				return err
 			}
 			u.FailTimeout = dur
 		case "max_fails":
-			n, err := strconv.Atoi(v)
+			n, err := strconv.Atoi(value.V)
 			if err != nil {
 				return err
 			}
@@ -612,25 +615,25 @@ func (u *staticUpstream) parseFromQuery(q url.Values) error {
 			}
 			u.MaxFails = int32(n)
 		case "try_duration":
-			dur, err := time.ParseDuration(v)
+			dur, err := time.ParseDuration(value.V)
 			if err != nil {
 				return err
 			}
 			u.TryDuration = dur
 		case "try_interval":
-			interval, err := time.ParseDuration(v)
+			interval, err := time.ParseDuration(value.V)
 			if err != nil {
 				return err
 			}
 			u.TryInterval = interval
 		case "max_conns":
-			n, err := strconv.ParseInt(v, 10, 64)
+			n, err := strconv.ParseInt(value.V, 10, 64)
 			if err != nil {
 				return err
 			}
 			u.MaxConns = n
 		case "health_check":
-			u.HealthCheck.Path = v
+			u.HealthCheck.Path = value.V
 			// Set defaults
 			if u.HealthCheck.Interval == 0 {
 				u.HealthCheck.Interval = 30 * time.Second
@@ -639,28 +642,28 @@ func (u *staticUpstream) parseFromQuery(q url.Values) error {
 				u.HealthCheck.Timeout = 60 * time.Second
 			}
 		case "health_check_interval":
-			dur, err := time.ParseDuration(v)
+			dur, err := time.ParseDuration(value.V)
 			if err != nil {
 				return err
 			}
 			u.HealthCheck.Interval = dur
 		case "health_check_timeout":
-			dur, err := time.ParseDuration(v)
+			dur, err := time.ParseDuration(value.V)
 			if err != nil {
 				return err
 			}
 			u.HealthCheck.Timeout = dur
 		case "health_check_port":
-			n, err := strconv.Atoi(v)
+			n, err := strconv.Atoi(value.V)
 			if err != nil {
 				return err
 			}
 			if n < 0 {
-				return fmt.Errorf("invalid health_check_port '%s'", v)
+				return fmt.Errorf("invalid health_check_port '%s'", value.V)
 			}
-			u.HealthCheck.Port = v
+			u.HealthCheck.Port = value.V
 		case "health_check_contains":
-			u.HealthCheck.ContentString = v
+			u.HealthCheck.ContentString = value.V
 		case "header_upstream":
 			return errors.New("please use header_upstream[-Key]=Value format")
 		case "header_downstream":
@@ -674,9 +677,9 @@ func (u *staticUpstream) parseFromQuery(q url.Values) error {
 			u.upstreamHeaders.Add("Connection", "{>Connection}")
 			u.upstreamHeaders.Add("Upgrade", "{>Upgrade}")
 		case "without":
-			u.WithoutPathPrefix = v
+			u.WithoutPathPrefix = value.V
 		case "except":
-			ignoredPaths := strings.Split(v, ",")
+			ignoredPaths := strings.Split(value.V, ",")
 			if len(ignoredPaths) == 0 {
 				return errors.New("except can not be empty")
 			}
@@ -684,13 +687,13 @@ func (u *staticUpstream) parseFromQuery(q url.Values) error {
 		case "insecure_skip_verify":
 			u.insecureSkipVerify = true
 		case "keepalive":
-			n, err := strconv.Atoi(v)
+			n, err := strconv.Atoi(value.V)
 			if err != nil {
 				return err
 			}
 			u.KeepAlive = n
 		default:
-			return fmt.Errorf("unknown argument '%s'", k)
+			return fmt.Errorf("unknown argument '%s'", value.K)
 		}
 	}
 	return nil

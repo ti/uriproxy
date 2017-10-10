@@ -17,7 +17,6 @@ package uriproxy
 import (
 	"testing"
 	"time"
-	"net/url"
 	"net/http"
 	"sync/atomic"
 	"fmt"
@@ -154,37 +153,21 @@ func TestAllowedPaths(t *testing.T) {
 
 func TestParseBlockHealthCheck(t *testing.T) {
 	tests := []struct {
-		config   url.Values
+		config   string
 		interval string
 		timeout  string
 	}{
-		{
-			url.Values{"health_check": {"/health"}, "health_check_interval": {"10s"}, "health_check_timeout": {"20s"},},
-			"10s",
-			"20s",
-		},
-		{
-			url.Values{"health_check": {"/health"}},
-			"30s",
-			"1m0s",
-		}, {
-			url.Values{"health_check": {"/health"}, "health_check_interval": {"15s"},},
-			"15s",
-			"1m0s",
-		}, {
-			url.Values{"health_check": {"/health"}, "health_check_interval": {"10s"}, "health_check_timeout": {"20s"},},
-			"10s",
-			"20s",
-		}, {
-			url.Values{"health_check": {"/health"}, "health_check_time": {"15s"},},
-			"30s",
-			"1m0s",
-		},
+		{"health_check=/health&health_check_interval=10s&health_check_timeout=20s", "10s","20s",},
+		{"health_check=/health","30s","1m0s",},
+		{"health_check=/health&health_check_interval=15s","15s","1m0s",},
+		{"health_check=/health&health_check_interval=10s&health_check_timeout=20s","10s","20s",},
+		{"health_check=/health&health_check_time=15s","30s","1m0s",},
 	}
 
 	for i, test := range tests {
 		u := staticUpstream{}
-		u.parseFromQuery(test.config)
+		q, _ := parseQuery(test.config)
+		u.parseFromQuery(q)
 		if u.HealthCheck.Interval.String() != test.interval {
 			t.Errorf(
 				"Test %d: HealthCheck interval not the same from config. Got %v. Expected: %v",

@@ -11,6 +11,7 @@ import (
 	"time"
 	"golang.org/x/net/http2"
 	"fmt"
+	"context"
 )
 
 var (
@@ -492,6 +493,7 @@ func newConnHijackerTransport(base http.RoundTripper) *connHijackerTransport {
 	t := &http.Transport{
 		MaxIdleConnsPerHost: -1,
 	}
+
 	if b, _ := base.(*http.Transport); b != nil {
 		tlsClientConfig := b.TLSClientConfig
 		if tlsClientConfig != nil && tlsClientConfig.NextProtos != nil {
@@ -502,7 +504,7 @@ func newConnHijackerTransport(base http.RoundTripper) *connHijackerTransport {
 		t.Proxy = b.Proxy
 		t.TLSClientConfig = tlsClientConfig
 		t.TLSHandshakeTimeout = b.TLSHandshakeTimeout
-		t.Dial = b.Dial
+		t.DialContext = b.DialContext
 		t.DialTLS = b.DialTLS
 	} else {
 		t.Proxy = http.ProxyFromEnvironment
@@ -510,13 +512,15 @@ func newConnHijackerTransport(base http.RoundTripper) *connHijackerTransport {
 	}
 	hj := &connHijackerTransport{t, nil, bufferPool.Get().([]byte)[:0]}
 
-	dial := getTransportDial(t)
-	dialTLS := getTransportDialTLS(t)
-	t.Dial = func(network, addr string) (net.Conn, error) {
-		c, err := dial(network, addr)
+	dial := getTransportDialContext(t)
+	t.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		c, err := dial(ctx, network, addr)
 		hj.Conn = c
 		return &hijackedConn{c, hj}, err
 	}
+
+	dialTLS := getTransportDialTLS(t)
+
 	t.DialTLS = func(network, addr string) (net.Conn, error) {
 		c, err := dialTLS(network, addr)
 		hj.Conn = c
@@ -526,14 +530,30 @@ func newConnHijackerTransport(base http.RoundTripper) *connHijackerTransport {
 	return hj
 }
 
-// getTransportDial always returns a plain Dialer
+
+// getTransportDialContext always returns a plain Dialer
 // and defaults to the existing t.Dial.
-func getTransportDial(t *http.Transport) func(network, addr string) (net.Conn, error) {
-	if t.Dial != nil {
-		return t.Dial
+func getTransportDialContext(t *http.Transport) func(ctx context.Context, network, address string) (net.Conn, error) {
+	if t.DialContext != nil {
+		return t.DialContext
+	}
+	return defaultDialer.DialContext
+}
+
+
+
+// getTransportDialXTLS always returns a plain Dialer
+// and defaults to the existing t.Dial.
+//TODO: check if it right
+func getTransportDialXTLS(t *http.Transport) func(network, address string) (net.Conn, error) {
+	if t.DialTLS != nil {
+		return t.DialTLS
 	}
 	return defaultDialer.Dial
 }
+
+
+
 
 // getTransportDial always returns a TLS Dialer
 // and defaults to the existing t.DialTLS.
@@ -544,16 +564,13 @@ func getTransportDialTLS(t *http.Transport) func(network, addr string) (net.Conn
 
 	// newConnHijackerTransport will modify t.Dial after calling this method
 	// => Create a backup reference.
-	plainDial := getTransportDial(t)
+	plainDial := getTransportDialXTLS(t)
+
 
 	// The following DialTLS implementation stems from the Go stdlib and
 	// is identical to what happens if DialTLS is not provided.
 	// Source: https://github.com/golang/go/blob/230a376b5a67f0e9341e1fa47e670ff762213c83/src/net/http/transport.go#L1018-L1051
 	return func(network, addr string) (net.Conn, error) {
-		plainConn, err := plainDial(network, addr)
-		if err != nil {
-			return nil, err
-		}
 
 		tlsClientConfig := t.TLSClientConfig
 		if tlsClientConfig == nil {
@@ -562,6 +579,12 @@ func getTransportDialTLS(t *http.Transport) func(network, addr string) (net.Conn
 		if !tlsClientConfig.InsecureSkipVerify && tlsClientConfig.ServerName == "" {
 			tlsClientConfig.ServerName = stripPort(addr)
 		}
+		//TODO: check if context is right
+		plainConn, err := plainDial(network, addr)
+		if err != nil {
+			return nil, err
+		}
+
 
 		tlsConn := tls.Client(plainConn, tlsClientConfig)
 		errc := make(chan error, 2)

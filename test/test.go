@@ -41,7 +41,7 @@ func TestMultiUriClient()  {
 			log.Println("runing",i, "time", resp.StatusCode, "耗时", (time.Now().Nanosecond() / 10000) - start)
 		}
 	}
-	log.Println("请求结果", result)
+	log.Println("RESULT", result)
 	time.Sleep(time.Minute)
 	return
 }
