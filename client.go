@@ -11,15 +11,16 @@ import (
 )
 
 // DefaultProxy is the default Client like nginx
-var DefaultClient = &Client{sync.Map{},}
+var DefaultClient = &Client{sync.Map{},false}
 
 // Proxy represents a middleware instance that can proxy requests.
 type Client struct {
 	upstreams sync.Map
+	DisorderedHosts bool
 }
 
-func NewClient() *Client {
-	return  &Client{sync.Map{},}
+func NewClient(disorderedHosts bool) *Client {
+	return  &Client{sync.Map{}, disorderedHosts}
 }
 
 // Rest clean all stored clients
@@ -57,9 +58,14 @@ func (c *Client) Request(method, uri string, headers map[string]string, body io.
 
 //LoadOrStoreUpstream
 func (c *Client) LoadOrStoreUpstream(URL *url.URL) (Upstream, error) {
-	hosts := strings.Split(URL.Host, ",")
-	sort.Strings(hosts)
-	key := strings.Join(hosts, ",")
+	var key string
+	if c.DisorderedHosts {
+		hosts := strings.Split(URL.Host, ",")
+		sort.Strings(hosts)
+		key = URL.Scheme + strings.Join(hosts, ",")
+	} else {
+		key = URL.Scheme + URL.Host
+	}
 	if v , ok := c.upstreams.Load(key); ok {
 		if upstream, ok := v.(Upstream); ok {
 			return upstream,nil

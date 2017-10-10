@@ -1,6 +1,6 @@
 # URI Proxy
 
-Reverse Proxy and Http Client for distributed uri like http://host1,host2,host3/path
+Reverse Proxy and Http Client for Distributed uri like http://host1,host2,host3/path
 
 ## Reverse Proxy
 ```go
