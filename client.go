@@ -58,14 +58,13 @@ func (c *Client) Request(method, uri string, headers map[string]string, body io.
 
 //LoadOrStoreUpstream
 func (c *Client) LoadOrStoreUpstream(URL *url.URL) (Upstream, error) {
-	var key string
+	host := URL.Host
 	if c.DisorderedHosts {
 		hosts := strings.Split(URL.Host, ",")
 		sort.Strings(hosts)
-		key = URL.Scheme + strings.Join(hosts, ",")
-	} else {
-		key = URL.Scheme + URL.Host
+		host = strings.Join(hosts, ",")
 	}
+	key := URL.Scheme + host
 	if v , ok := c.upstreams.Load(key); ok {
 		if upstream, ok := v.(Upstream); ok {
 			return upstream,nil
@@ -73,7 +72,7 @@ func (c *Client) LoadOrStoreUpstream(URL *url.URL) (Upstream, error) {
 			panic("clients just only contains  upstream")
 		}
 	} else {
-		URL.Host = key
+		URL.Host = host
 		URL.Path = ""
 		upstream, err  := newStaticUpstreamByURL(URL)
 		if err != nil {

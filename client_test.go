@@ -22,7 +22,6 @@ func TestClient_Request(t *testing.T) {
 			log.Println("ERROR", err)
 			addRet(result, 0)
 			log.Println("runing",i, "ERROR", 0, "time", (time.Now().Nanosecond() / 10000) - start)
-
 			time.Sleep(time.Second)
 
 		} else {
