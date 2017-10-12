@@ -72,9 +72,7 @@ func (c *Client) LoadOrStoreUpstream(URL *url.URL) (Upstream, error) {
 			panic("clients just only contains  upstream")
 		}
 	} else {
-		URL.Host = host
-		URL.Path = ""
-		upstream, err  := newStaticUpstreamByURL(URL)
+		upstream, err  := newStaticUpstreamByURL(&url.URL{Scheme:URL.Scheme, Host:URL.Host,})
 		if err != nil {
 			return nil, err
 		}
@@ -87,7 +85,7 @@ func (c *Client) LoadOrStoreUpstream(URL *url.URL) (Upstream, error) {
 func (c *Client) Proxy(w http.ResponseWriter, r *http.Request, respRespUpdateFn RespUpdateFn) (int, error) {
 	upstream, err := c.LoadOrStoreUpstream(r.URL)
 	if err != nil {
-		return http.StatusInternalServerError, ErrInternalServerError
+		return http.StatusBadGateway, err
 	}
 	return ServeUpstream(upstream, w,r,respRespUpdateFn)
 }
