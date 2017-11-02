@@ -41,10 +41,10 @@ func (c *Client) Request(method, uri string, headers map[string]string, body io.
 	if err != nil {
 		return  nil, err
 	}
-	if headers["Authorization"] == "" && URL.User != nil {
-		req.Header.Set("Authorization",base64.StdEncoding.EncodeToString([]byte(URL.User.String())))
-	}
 	if headers  != nil {
+		if headers["Authorization"] == "" && URL.User != nil {
+			req.Header.Set("Authorization",base64.StdEncoding.EncodeToString([]byte(URL.User.String())))
+		}
 		for k, v := range headers {
 			req.Header.Set(k, v)
 		}
