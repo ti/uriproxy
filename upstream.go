@@ -317,7 +317,7 @@ func newStaticUpstreamByURL(uri *url.URL) (Upstream, error) {
 		Hosts:             nil,
 		Policy:            &RoundRobin{},
 		MaxFails:          1,
-		FailTimeout:       30 * time.Second,
+		FailTimeout:       0,
 		TryDuration:       5 * time.Second,
 		TryInterval:       250 * time.Millisecond,
 		MaxConns:          0,
