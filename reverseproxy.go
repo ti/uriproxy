@@ -89,6 +89,7 @@ func singleJoiningSlash(a, b string) string {
 	return a + b
 }
 
+
 // NewSingleHostReverseProxy returns a new ReverseProxy that rewrites
 // URLs to the scheme, host, and base path provided in target. If the
 // target's path is "/base" and the incoming request was for "/dir",
@@ -171,18 +172,21 @@ func NewSingleHostReverseProxy(target *url.URL, without string, keepalive int) *
 		}
 	}
 
-	rp := &ReverseProxy{Director: director, FlushInterval: 250 * time.Millisecond} // flushing good for streaming & server-sent events
+	rp := &ReverseProxy{
+		Director:      director,
+		FlushInterval: 250 * time.Millisecond, // flushing good for streaming & server-sent events
+	}
+
 	if target.Scheme == "unix" {
 		rp.Transport = &http.Transport{
 			Dial: socketDial(target.String()),
 		}
-	} else if keepalive != http.DefaultMaxIdleConnsPerHost {
-		// if keepalive is equal to the default,
-		// just use default transport, to avoid creating
-		// a brand new transport
+	}  else if keepalive != http.DefaultMaxIdleConnsPerHost {
+		dialFunc := defaultDialer.Dial
+
 		transport := &http.Transport{
 			Proxy:                 http.ProxyFromEnvironment,
-			Dial:                  defaultDialer.Dial,
+			Dial:                  dialFunc,
 			TLSHandshakeTimeout:   defaultCryptoHandshakeTimeout,
 			ExpectContinueTimeout: 1 * time.Second,
 		}

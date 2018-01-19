@@ -34,6 +34,8 @@ import (
 
 var (
 	supportedPolicies = make(map[string]func(string) Policy)
+	DefaultMaxConns int64 = 65535
+	DefaultMaxIdleConnsPerHost = 5000
 )
 
 //ServeUpstream  Server Http ResponseWriter and Request to Upsteam
@@ -320,8 +322,8 @@ func newStaticUpstreamByURL(uri *url.URL) (Upstream, error) {
 		FailTimeout:       0,
 		TryDuration:       5 * time.Second,
 		TryInterval:       250 * time.Millisecond,
-		MaxConns:          0,
-		KeepAlive:         http.DefaultMaxIdleConnsPerHost,
+		MaxConns:          DefaultMaxConns,
+		KeepAlive:         DefaultMaxIdleConnsPerHost,
 	}
 	query, _ := parseQuery(uri.RawQuery)
 	if err := upstream.parseFromQuery(query); err != nil {
