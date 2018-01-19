@@ -35,7 +35,7 @@ import (
 var (
 	supportedPolicies = make(map[string]func(string) Policy)
 	DefaultMaxConns int64 = 65535
-	DefaultMaxIdleConnsPerHost = 5000
+	DefaultMaxIdleConnsPerHost = 100
 )
 
 //ServeUpstream  Server Http ResponseWriter and Request to Upsteam
