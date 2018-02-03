@@ -318,7 +318,7 @@ func newStaticUpstreamByURL(uri *url.URL) (Upstream, error) {
 		downstreamHeaders: make(http.Header),
 		Hosts:             nil,
 		Policy:            &RoundRobin{},
-		MaxFails:          1,
+		MaxFails:          2,
 		FailTimeout:       0,
 		TryDuration:       5 * time.Second,
 		TryInterval:       250 * time.Millisecond,
